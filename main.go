@@ -9,6 +9,12 @@ import (
 	"os"
 )
 
+type goCounter struct {
+	counts int
+	source string
+	error error
+}
+
 func countGo(input string) int {
 
 	count := 0
@@ -49,16 +55,17 @@ func fetchData(sourceType string, address string) (string, error) {
 	case "file":
 		return readFile(address)
 	default:
-		panic("Unknown option")
+		return  "", fmt.Errorf("Unknown source type: %s", sourceType)
 	}
 }
 
-func getIt(sourceType string, address string, collector chan string) {
+func getIt(sourceType string, address string, collector chan goCounter) {
 	data, err := fetchData(sourceType, address)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "ddv")
+		collector <- goCounter{error:err}
+	} else {
+		collector <- goCounter{source: address, counts: countGo(data)}
 	}
-	collector <- fmt.Sprintf("Count for %s: %d\n",  address, countGo(data))
 }
 
 func main() {
@@ -66,9 +73,7 @@ func main() {
 	sourceType := flag.String("type", "", "-url http://ya.ru/")
 	flag.Parse()
 
-	counts := make(chan string, 5)
-	total := make(chan int, 5)
-
+	counts := make(chan goCounter, 5)
 
 	lines := 0
 	scanner := bufio.NewScanner(os.Stdin)
@@ -78,13 +83,20 @@ func main() {
 		go getIt(*sourceType, address, counts)
 	}
 
-	for msg := range counts {
-		fmt.Print(msg)
+	total := 0
+	for datum := range counts {
+		if datum.error != nil {
+			fmt.Printf("Error getting data for %s\n", datum.source)
+		} else {
+			fmt.Printf("Count for %s: %d\n", datum.source, datum.counts)
+			total += datum.counts
+		}
 		lines--
 		if lines == 0 {
 			close(counts)
 		}
 	}
+	fmt.Printf("Total: %d\n", total)
 }
 
 /*
