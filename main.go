@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"flag"
+	"sync"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -59,13 +60,14 @@ func fetchData(sourceType string, address string) (string, error) {
 	}
 }
 
-func getIt(sourceType string, address string, collector chan goCounter) {
+func getIt(sourceType string, address string, collector chan goCounter, wg *sync.WaitGroup) {
 	data, err := fetchData(sourceType, address)
 	if err != nil {
 		collector <- goCounter{error:err}
 	} else {
 		collector <- goCounter{source: address, counts: countGo(data)}
 	}
+	wg.Done()
 }
 
 func main() {
@@ -75,13 +77,16 @@ func main() {
 
 	counts := make(chan goCounter, 5)
 
-	lines := 0
 	scanner := bufio.NewScanner(os.Stdin)
+	var wg sync.WaitGroup
 	for scanner.Scan() {
+		wg.Add(1)
 		address := scanner.Text()
-		lines++
-		go getIt(*sourceType, address, counts)
+		go getIt(*sourceType, address, counts, &wg)
 	}
+
+	wg.Wait()
+	close(counts)
 
 	total := 0
 	for datum := range counts {
@@ -91,10 +96,7 @@ func main() {
 			fmt.Printf("Count for %s: %d\n", datum.source, datum.counts)
 			total += datum.counts
 		}
-		lines--
-		if lines == 0 {
-			close(counts)
-		}
+
 	}
 	fmt.Printf("Total: %d\n", total)
 }
@@ -117,12 +119,4 @@ Total: 0
 Каждый источник данных должен начать обрабатываться сразу после вычитывания и параллельно с вычитыванием следующего. Источники должны обрабатываться параллельно, но не более k=5 одновременно. Обработчики данных не должны порождать лишних горутин, т.е. если k=1000 а обрабатываемых источников нет, не должно создаваться 1000 горутин.
 Нужно обойтись без глобальных переменных и использовать только стандартные библиотеки. Код должен быть написан так, чтобы его можно было легко тестировать.
 Формат предоставления решения: ссылка на github.
-С уважением,
-Мария Тимченко
-Менеджер отдела подбора персонала
-Mail.Ru Group
-Офис.: +7-495-725-63-57 доб. 2281
-Моб.: +7-916-157-86-81
-Агент: m.timchenko@corp.mail.ru
-www.corp.mail.ru
 */
