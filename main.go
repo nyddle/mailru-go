@@ -3,17 +3,17 @@ package main
 import (
 	"bufio"
 	"flag"
-	"sync"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
+	"sync"
 )
 
 type goCounter struct {
 	counts int
 	source string
-	error error
+	error  error
 }
 
 func countGo(input string) int {
@@ -55,14 +55,14 @@ func fetchData(sourceType string, address string) (string, error) {
 	case "file":
 		return readFile(address)
 	default:
-		return  "", fmt.Errorf("Unknown source type: %s", sourceType)
+		return "", fmt.Errorf("Unknown source type: %s", sourceType)
 	}
 }
 
 func getIt(sourceType string, address string, collector chan goCounter, wg *sync.WaitGroup) {
 	data, err := fetchData(sourceType, address)
 	if err != nil {
-		collector <- goCounter{error:err}
+		collector <- goCounter{error: err}
 	} else {
 		collector <- goCounter{source: address, counts: countGo(data)}
 	}
