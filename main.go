@@ -19,8 +19,8 @@ type goCounter struct {
 func countGo(input string) int {
 
 	count := 0
-	for i := 0; i < len(input); i++ {
-		if input[i] == 'g' && input[i+1] == 'o' {
+	for i := 0; i < len(input)-1; i++ {
+		if input[i] == 'G' && input[i+1] == 'o' {
 			count++
 		}
 	}
@@ -31,7 +31,6 @@ func getURL(url string) (string, error) {
 
 	resp, err := http.Get(url)
 	if err != nil {
-		//TODO: warn here
 		return "", err
 	}
 	defer resp.Body.Close()
@@ -91,7 +90,7 @@ func main() {
 	total := 0
 	for datum := range counts {
 		if datum.error != nil {
-			fmt.Printf("Error getting data for %s\n", datum.source)
+			fmt.Printf("Error getting data for %s: %s\n", datum.source, datum.error.Error())
 		} else {
 			fmt.Printf("Count for %s: %d\n", datum.source, datum.counts)
 			total += datum.counts
